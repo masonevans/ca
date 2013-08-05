@@ -1,0 +1,98 @@
+<html>
+<head>
+<script src="/socket.io/socket.io.js"></script>
+<script src="http://ajax.aspnetcdn.com/ajax/jQuery/jquery-1.7.2.min.js"></script>
+<script>
+	var socket = io.connect('http://localhost/');
+	
+	var parseQueryString = function( queryString ) {
+		var params = {}, queries, temp, i, l;
+	 
+		// Split into key/value pairs
+		queries = queryString.split("&");
+	 
+		// Convert the array of strings into an object
+		for ( i = 0, l = queries.length; i < l; i++ ) {
+			temp = queries[i].split('=');
+			params[temp[0]] = temp[1];
+		}
+	 
+		return params;
+	};
+	
+	var room = parseQueryString(window.location.search.substring(1)).room;
+	console.log("connection to room: " + room);
+  
+	socket.on('chat', function (data) {
+        console.log("new chat: " + room);
+        $("#container").prepend("<p class='tweet'><b>" + data.user + ":</b> "+data.data+"</p>");
+        $(".tweet:hidden").fadeIn('slow');
+	});
+	
+	socket.on('control', function(data) {
+		if(data.controlText !== undefined) {
+			$("#container").prepend("<p class='tweet'><b>" + data.controlText + "</b></p>");
+			$(".tweet:hidden").fadeIn('slow');
+		}
+		if(data.command === 'join') {
+				$('#usersOnline').append('<option value="' + data.data + '">'+data.data+'</option>');
+		} else if(data.command === 'part') {
+			$('#usersOnline option[value="' + data.data + '"]').remove();
+		} else if(data.command === 'setUserName') {
+			$('#username').text(data.data);
+		} else if(data.command === 'members') {
+			$('#usersOnline > option').remove();
+			for(user in data.data) {
+				$('#usersOnline').append('<option value="' + data.data[user] + '">'+data.data[user]+'</option>');
+			}
+		}
+	});
+	
+	$(document).ready(function() {
+                $(".tweet:hidden").fadeIn('slow');
+    });
+		
+	function chat() {
+		socket.emit('chat', {data: new Date(), room: room});
+	}
+	
+	socket.emit('joinRoom', {roomName: room, password: 'password'});
+	
+	function joinRoom() {
+		$("#container").empty();
+		socket.emit('joinRoom', {roomName: $("#roomToJoin").text()});
+	}
+</script>
+<style type="text/css">
+        .tweet {
+                display: none;
+                font-family: sans-serif;
+                background: #FFF;
+                border-radius: 10px;
+                padding: 7px;
+                padding-left: 50px;
+                margin: 7px;
+                /*background-image: url('rings-sm.png');*/
+                background-repeat: no-repeat;
+                background-position: 5px;
+        }
+
+        body {
+                background: #EEE;
+        }
+</style>
+
+</head>
+<body>
+<table width="100%">
+<tr>
+<td width="75px" valign="top"><select name="usersOnline" id="usersOnline" multiple="multiple"/ height="8" width="60px"><br>
+<input type="text" id="roomToJoin" width="75px"><button onclick="joinRoom(); return true;">Join</button><br>
+Welcome to chatymous, <div id="username">&nbsp;</div><br><button onclick="chat(); return true;">Chat!</button>
+</td>
+<td width="*"><p id="container"/>
+</td>
+</tr>
+</table>
+</body>
+</html>
